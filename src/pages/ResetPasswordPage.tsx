@@ -1,0 +1,79 @@
+import React from 'react';
+import { motion } from 'framer-motion';
+import { Scale, BookOpen, Zap } from 'lucide-react';
+import { DynamicLogo } from '../components/ui/DynamicLogo';
+import { ResetPasswordForm } from '../components/auth/ResetPasswordForm';
+
+export function ResetPasswordPage() {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-emerald-50 dark:from-dark-900 dark:via-dark-800 dark:to-dark-700 flex transition-colors duration-200">
+      {/* Left side - Hero content */}
+      <div className="hidden lg:flex lg:w-1/2 xl:w-3/5 bg-gradient-to-br from-blue-600 to-emerald-600 dark:from-blue-800 dark:to-emerald-800 p-12 items-center justify-center relative overflow-hidden transition-colors duration-200">
+        <div className="absolute inset-0 bg-black opacity-10"></div>
+        <div className="relative z-10 text-center text-white max-w-lg">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+          >
+            <div className="flex items-center justify-center mb-8">
+              <DynamicLogo className="w-[150px] h-auto object-contain" />
+            </div>
+
+            <h1 className="text-4xl lg:text-5xl font-bold mb-6 text-white">
+              AI-Powered Legal Research for Nigerian Professionals
+            </h1>
+
+            <p className="text-xl text-white mb-8">
+              Streamline your legal research with advanced AI, comprehensive case databases,
+              and intelligent document analysis.
+            </p>
+
+            <div className="space-y-4">
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.3 }}
+                className="flex items-center text-lg"
+              >
+                <BookOpen className="h-6 w-6 mr-3 text-emerald-200" />
+                <span className="text-white">Comprehensive legal database</span>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.4 }}
+                className="flex items-center text-lg"
+              >
+                <Zap className="h-6 w-6 mr-3 text-yellow-200" />
+                <span className="text-white">Instant AI-powered insights</span>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.5 }}
+                className="flex items-center text-lg"
+              >
+                <Scale className="h-6 w-6 mr-3 text-blue-200" />
+                <span className="text-white">Nigerian jurisprudence focus</span>
+              </motion.div>
+            </div>
+          </motion.div>
+        </div>
+        
+        {/* Decorative elements */}
+        <div className="absolute top-20 right-20 w-32 h-32 bg-white opacity-5 rounded-full"></div>
+        <div className="absolute bottom-20 left-20 w-24 h-24 bg-white opacity-5 rounded-full"></div>
+      </div>
+
+      {/* Right side - Reset Password Form */}
+      <div className="flex-1 flex items-center justify-center p-8 bg-white dark:bg-dark-secondary transition-colors duration-200">
+        <div className="w-full max-w-md">
+          <ResetPasswordForm />
+        </div>
+      </div>
+    </div>
+  );
+}
