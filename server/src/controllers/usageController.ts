@@ -40,14 +40,24 @@ export const getUsage = async (req: Request, res: Response) => {
     });
 
     const plan = profile?.subscriptions?.[0]?.plan;
-    let max_limit = 50; // Default
+    const isAdmin = profile?.role === 'admin' || profile?.role === 'super_admin';
+    
+    // Default strict limit for free users if no plan found
+    let max_limit = 15; // 15 chats per day for free plan
 
-    if (plan) {
+    if (isAdmin) {
+      max_limit = -1;
+    } else if (plan) {
       if (feature === 'chat_message') {
         max_limit = plan.max_chats_per_day;
       } else if (feature === 'document_upload') {
         max_limit = plan.max_documents;
       }
+    } else {
+        // Fallback if no plan exists
+        if (feature === 'document_upload') {
+            max_limit = 5; // 5 documents for free plan
+        }
     }
 
     res.json({

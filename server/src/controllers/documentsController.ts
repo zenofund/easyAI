@@ -262,14 +262,24 @@ export const uploadDocument = async (req: Request, res: Response) => {
       }
     });
 
-    const maxDocs = profile?.subscriptions?.[0]?.plan?.max_documents || 10;
+    let maxDocs = profile?.subscriptions?.[0]?.plan?.max_documents ?? 5;
+
+    // Force unlimited for admins regardless of plan
+    if (user.role === 'admin' || user.role === 'super_admin') {
+      maxDocs = -1;
+    }
+
     const currentCount = await prisma.document.count({
       where: { uploaded_by: user.id }
     });
 
-    if (currentCount >= maxDocs) {
+    if (maxDocs !== -1 && currentCount >= maxDocs) {
       // Clean up uploaded file
-      fs.unlinkSync(file.path);
+      try {
+        fs.unlinkSync(file.path);
+      } catch (e) {
+        console.error('Error deleting file:', e);
+      }
       return res.status(403).json({ error: 'Document limit reached' });
     }
 
@@ -462,11 +472,21 @@ export const getDocumentUsage = async (req: Request, res: Response) => {
             }
         });
 
-        const max = profile?.subscriptions?.[0]?.plan?.max_documents || 10;
+        let max = 5;
+        const planMax = profile?.subscriptions?.[0]?.plan?.max_documents;
+        
+        if (planMax !== undefined) {
+            max = planMax;
+        }
+
+        // Force unlimited for admins regardless of plan
+        if (user.role === 'admin' || user.role === 'super_admin') {
+            max = -1;
+        }
 
         res.json({
-            current: count,
-            max: max
+            count,
+            max_limit: max
         });
     } catch (error) {
         console.error('Error getting document usage:', error);
@@ -500,6 +520,19 @@ export const summarizeCase = async (req: Request, res: Response) => {
 
     if (!document.content) {
         return res.status(400).json({ error: 'Document content is empty' });
+    }
+
+    // Check plan permissions
+    const profile = await prisma.user.findUnique({
+      where: { id: user.id },
+      include: { subscriptions: { where: { status: 'active' }, include: { plan: true } } }
+    });
+    
+    const plan = profile?.subscriptions?.[0]?.plan;
+    const isAdmin = user.role === 'admin' || user.role === 'super_admin';
+
+    if (!isAdmin && !plan?.case_summarizer) {
+        return res.status(403).json({ error: 'FEATURE_RESTRICTED', message: 'Case summarizer is not available on your plan.' });
     }
 
     // Check if summary already exists in metadata
@@ -536,6 +569,19 @@ export const summarizeCase = async (req: Request, res: Response) => {
     // Track usage
     await trackUsage(user.id, 'case_summarizer');
 
+    // Save to artifacts if premium user or admin (since admins are unrestricted)
+    if (isAdmin || plan?.tier === 'pro' || plan?.tier === 'enterprise') {
+        await prisma.userArtifact.create({
+            data: {
+                user_id: user.id,
+                type: 'summary',
+                title: `Summary: ${document.title}`,
+                content: summary,
+                metadata: { document_id: document.id }
+            }
+        });
+    }
+
     res.json({ success: true, summary });
 
   } catch (error) {
@@ -563,6 +609,20 @@ export const generateBrief = async (req: Request, res: Response) => {
 
     if (!openaiApiKey) {
       return res.status(500).json({ error: 'OpenAI API key not configured' });
+    }
+
+    // Check plan permissions
+    const profile = await prisma.user.findUnique({
+      where: { id: user.id },
+      include: { subscriptions: { where: { status: 'active' }, include: { plan: true } } }
+    });
+    
+    const plan = profile?.subscriptions?.[0]?.plan;
+    const isAdmin = user.role === 'admin' || user.role === 'super_admin';
+
+    // Brief generation usually falls under AI drafting
+    if (!isAdmin && !plan?.ai_drafting) {
+        return res.status(403).json({ error: 'FEATURE_RESTRICTED', message: 'Brief generation is not available on your plan.' });
     }
 
     let textContext = case_text || '';
@@ -645,6 +705,24 @@ export const generateBrief = async (req: Request, res: Response) => {
 
     // Track usage
     await trackUsage(user.id, 'ai_drafting');
+
+    // Save to artifacts if premium user or admin
+    if (isAdmin || plan?.tier === 'pro' || plan?.tier === 'enterprise') {
+        await prisma.userArtifact.create({
+            data: {
+                user_id: user.id,
+                type: 'brief',
+                title: brief.title || `Legal Brief - ${brief_type}`,
+                content: JSON.stringify(brief), // Store the JSON structure
+                metadata: { 
+                    brief_type, 
+                    jurisdiction, 
+                    court, 
+                    document_id 
+                }
+            }
+        });
+    }
 
     res.json({ success: true, brief });
 

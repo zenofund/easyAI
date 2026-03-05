@@ -1,0 +1,14 @@
+
+model UserArtifact {
+  id          String   @id @default(uuid()) @db.Uuid
+  user_id     String   @db.Uuid
+  type        String   // 'draft', 'summary', 'brief', 'citation'
+  title       String
+  content     String   // The generated text
+  metadata    Json     @default("{}") // Store inputs, original doc ID, etc.
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+  user        User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("user_artifacts")
+}

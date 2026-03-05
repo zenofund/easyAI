@@ -137,7 +137,20 @@ async function processAIResponse(
     const plan = subscription?.plan;
     const isAdmin = profile.role === 'admin' || profile.role === 'super_admin';
 
-    if (!isAdmin && plan && plan.max_chats_per_day !== -1) {
+    // Determine effective limit
+    // Default to 15 chats/day if no plan is found (e.g. strict free tier fallback)
+    let maxChats = 15; 
+    
+    if (plan?.max_chats_per_day !== undefined) {
+      maxChats = plan.max_chats_per_day;
+    }
+
+    // Force unlimited for admins
+    if (isAdmin) {
+      maxChats = -1;
+    }
+
+    if (maxChats !== -1) {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       
@@ -151,13 +164,13 @@ async function processAIResponse(
         }
       });
 
-      if (usage && usage.count >= plan.max_chats_per_day) {
+      if (usage && usage.count >= maxChats) {
         return res.status(429).json({
           error: "CHAT_LIMIT_REACHED",
           current_usage: usage.count,
-          max_limit: plan.max_chats_per_day,
+          max_limit: maxChats,
           remaining: 0,
-          plan_tier: plan.tier,
+          plan_tier: plan?.tier || 'free',
           upgrade_needed: true
         });
       }

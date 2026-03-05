@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import prisma from '../lib/prisma';
 
 interface CitationRequest {
   caseName: string;
@@ -96,6 +97,28 @@ export const generateCitation = async (req: Request, res: Response) => {
         page
       }
     };
+
+    // Save to artifacts if premium user
+    const user = (req as any).user;
+    if (user) {
+        const profile = await prisma.user.findUnique({
+            where: { id: user.id },
+            include: { subscriptions: { where: { status: 'active' }, include: { plan: true } } }
+        });
+        
+        const plan = profile?.subscriptions?.[0]?.plan;
+        if (plan?.tier === 'pro' || plan?.tier === 'enterprise') {
+            await prisma.userArtifact.create({
+                data: {
+                    user_id: user.id,
+                    type: 'citation',
+                    title: `Citation: ${caseName}`,
+                    content: citation,
+                    metadata: { ...response.metadata, caseName, court }
+                }
+            });
+        }
+    }
 
     return res.status(200).json(response);
 
